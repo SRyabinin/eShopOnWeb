@@ -22,16 +22,17 @@ jobs:
           dotnet-version: '8.x'
 
       - name: Build with dotnet
-        run: dotnet build ./eShopOnWeb.sln --configuration Release
+        run: dotnet build --configuration Release
 
       - name: dotnet publish
-        run: dotnet publish ./src/Web/Web.csproj  -c Release -o "${{ github.workspace }}\myapp"
+        run: dotnet publish -c Release -o ${{env.DOTNET_ROOT}}/myapp
 
       - name: Upload artifact for deployment job
         uses: actions/upload-artifact@v4
         with:
           name: .net-app
-          path: "${{ github.workspace }}\\myapp"
+          path: ${{env.DOTNET_ROOT}}/myapp
+
   deploy:
     runs-on: windows-latest
     needs: build
@@ -50,9 +51,9 @@ jobs:
       - name: Login to Azure
         uses: azure/login@v2
         with:
-          client-id: ${{ secrets.AZUREAPPSERVICE_CLIENTID_2ECA8CAA63084D02BB65E2386720904F }}
-          tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_5D193E1F36DF40E38777E17BD4B54799 }}
-          subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_0FCB980001F041B3B4AE6B6258DC022A }}
+          client-id: ${{ secrets.AZUREAPPSERVICE_CLIENTID_C662317E758541B0B76E633EB5844088 }}
+          tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_3A3051800BBE4C58A4A28F3D2BC6F48F }}
+          subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_1104E588C4B84CEAA007FD69EE8D6DF6 }}
 
       - name: Deploy to Azure Web App
         id: deploy-to-webapp
