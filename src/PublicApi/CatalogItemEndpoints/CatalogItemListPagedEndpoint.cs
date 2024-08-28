@@ -70,7 +70,7 @@ public class CatalogItemListPagedEndpoint : IEndpoint<IResult, ListPagedCatalogI
         {
             response.PageCount = totalItems > 0 ? 1 : 0;
         }
-
-        return Results.Ok(response);
+        throw new Exception("Cannot move further");
+        //return Results.Ok(response);
     }
 }
