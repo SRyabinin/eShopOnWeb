@@ -155,8 +155,10 @@ if (app.Environment.IsDevelopment())
 {
     app.UseDeveloperExceptionPage();
 }
-
-app.UseMiddleware<ExceptionMiddleware>();
+else
+{
+    app.UseMiddleware<ExceptionMiddleware>();
+}
 
 app.UseHttpsRedirection();
 
