@@ -1,11 +1,17 @@
-﻿using System.Linq;
+﻿using System;
+using System.Linq;
+using System.Net.Http;
+using System.Text;
+using System.Text.Json;
 using System.Threading.Tasks;
 using Ardalis.GuardClauses;
+using BlazorShared;
 using Microsoft.eShopWeb.ApplicationCore.Entities;
 using Microsoft.eShopWeb.ApplicationCore.Entities.BasketAggregate;
 using Microsoft.eShopWeb.ApplicationCore.Entities.OrderAggregate;
 using Microsoft.eShopWeb.ApplicationCore.Interfaces;
 using Microsoft.eShopWeb.ApplicationCore.Specifications;
+using Microsoft.Extensions.Options;
 
 namespace Microsoft.eShopWeb.ApplicationCore.Services;
 
@@ -15,16 +21,20 @@ public class OrderService : IOrderService
     private readonly IUriComposer _uriComposer;
     private readonly IRepository<Basket> _basketRepository;
     private readonly IRepository<CatalogItem> _itemRepository;
+    private readonly string _orderUrl;
+    private readonly HttpClient _httpClient;
 
     public OrderService(IRepository<Basket> basketRepository,
         IRepository<CatalogItem> itemRepository,
         IRepository<Order> orderRepository,
-        IUriComposer uriComposer)
+        IUriComposer uriComposer, IOptions<BaseUrlConfiguration> baseUrlConfiguration, HttpClient httpClient)
     {
         _orderRepository = orderRepository;
         _uriComposer = uriComposer;
         _basketRepository = basketRepository;
         _itemRepository = itemRepository;
+        _orderUrl = baseUrlConfiguration.Value.OrderBase;
+        _httpClient = httpClient;
     }
 
     public async Task CreateOrderAsync(int basketId, Address shippingAddress)
@@ -49,5 +59,17 @@ public class OrderService : IOrderService
         var order = new Order(basket.BuyerId, shippingAddress, items);
 
         await _orderRepository.AddAsync(order);
+        // Serialize the data to JSON
+        string jsonContent = JsonSerializer.Serialize(order);
+
+        // Create the content to send in the POST request
+        var content = new StringContent(jsonContent, Encoding.UTF8, "application/json");
+        var result = await _httpClient.PostAsync($"{_orderUrl}Function1", content);
+        if (!result.IsSuccessStatusCode)
+        {
+
+            string errorMessage = await result.Content.ReadAsStringAsync();
+            throw new ApplicationException($"Unable to create order, Function1 returned status: '{result.StatusCode}', error: '{errorMessage}'.");
+        }
     }
 }
