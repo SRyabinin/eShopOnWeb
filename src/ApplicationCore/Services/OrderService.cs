@@ -1,5 +1,4 @@
-﻿using System;
-using System.Linq;
+﻿using System.Linq;
 using System.Net.Http;
 using System.Text;
 using System.Text.Json;
@@ -9,6 +8,7 @@ using BlazorShared;
 using Microsoft.eShopWeb.ApplicationCore.Entities;
 using Microsoft.eShopWeb.ApplicationCore.Entities.BasketAggregate;
 using Microsoft.eShopWeb.ApplicationCore.Entities.OrderAggregate;
+using Microsoft.eShopWeb.ApplicationCore.Exceptions;
 using Microsoft.eShopWeb.ApplicationCore.Interfaces;
 using Microsoft.eShopWeb.ApplicationCore.Specifications;
 using Microsoft.Extensions.Options;
@@ -64,12 +64,20 @@ public class OrderService : IOrderService
 
         // Create the content to send in the POST request
         var content = new StringContent(jsonContent, Encoding.UTF8, "application/json");
-        var result = await _httpClient.PostAsync($"{_orderUrl}Function1", content);
-        if (!result.IsSuccessStatusCode)
+        try
         {
+            var result = await _httpClient.PostAsync($"{_orderUrl}Function1", content);
+            if (!result.IsSuccessStatusCode)
+            {
 
-            string errorMessage = await result.Content.ReadAsStringAsync();
-            throw new ApplicationException($"Unable to create order, Function1 returned status: '{result.StatusCode}', error: '{errorMessage}'.");
+                string errorMessage = await result.Content.ReadAsStringAsync();
+                throw new OrderFunctionUnavailableException($"Unable to create order, Function1 returned status: '{result.StatusCode}', error: '{errorMessage}'.");
+            }
+
+        }
+        catch (System.Net.Http.HttpRequestException e)
+        {
+            throw new OrderFunctionUnavailableException($"Unable to create order, Function1.", e);
         }
     }
 }
