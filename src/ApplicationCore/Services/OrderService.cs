@@ -4,6 +4,7 @@ using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
 using Ardalis.GuardClauses;
+using Azure.Messaging.ServiceBus;
 using BlazorShared;
 using Microsoft.eShopWeb.ApplicationCore.Entities;
 using Microsoft.eShopWeb.ApplicationCore.Entities.BasketAggregate;
@@ -23,6 +24,7 @@ public class OrderService : IOrderService
     private readonly IRepository<CatalogItem> _itemRepository;
     private readonly string _orderUrl;
     private readonly HttpClient _httpClient;
+    private readonly ServiceBusClient _busClient;
 
     public OrderService(IRepository<Basket> basketRepository,
         IRepository<CatalogItem> itemRepository,
@@ -35,6 +37,7 @@ public class OrderService : IOrderService
         _itemRepository = itemRepository;
         _orderUrl = baseUrlConfiguration.Value.OrderBase;
         _httpClient = httpClient;
+        _busClient = new ServiceBusClient(baseUrlConfiguration.Value.ServiceBusConnection);
     }
 
     public async Task CreateOrderAsync(int basketId, Address shippingAddress)
@@ -59,25 +62,31 @@ public class OrderService : IOrderService
         var order = new Order(basket.BuyerId, shippingAddress, items);
 
         await _orderRepository.AddAsync(order);
-        // Serialize the data to JSON
-        string jsonContent = JsonSerializer.Serialize(order);
-
-        // Create the content to send in the POST request
-        var content = new StringContent(jsonContent, Encoding.UTF8, "application/json");
-        try
+        var sender = _busClient.CreateSender("orders");
+        await sender.SendMessageAsync(new ServiceBusMessage(JsonSerializer.Serialize(order)));
+        if ("use http".Length == 0)
         {
-            var result = await _httpClient.PostAsync($"{_orderUrl}Function1", content);
-            if (!result.IsSuccessStatusCode)
+            // Serialize the data to JSON
+            string jsonContent = JsonSerializer.Serialize(order);
+
+            // Create the content to send in the POST request
+            var content = new StringContent(jsonContent, Encoding.UTF8, "application/json");
+            try
             {
+                var result = await _httpClient.PostAsync($"{_orderUrl}Function1", content);
+                if (!result.IsSuccessStatusCode)
+                {
 
-                string errorMessage = await result.Content.ReadAsStringAsync();
-                throw new OrderFunctionUnavailableException($"Unable to create order, Function1 returned status: '{result.StatusCode}', error: '{errorMessage}'.");
+                    string errorMessage = await result.Content.ReadAsStringAsync();
+                    throw new OrderFunctionUnavailableException(
+                        $"Unable to create order, Function1 returned status: '{result.StatusCode}', error: '{errorMessage}'.");
+                }
+
             }
-
-        }
-        catch (System.Net.Http.HttpRequestException e)
-        {
-            throw new OrderFunctionUnavailableException($"Unable to create order, Function1.", e);
+            catch (System.Net.Http.HttpRequestException e)
+            {
+                throw new OrderFunctionUnavailableException($"Unable to create order, Function1.", e);
+            }
         }
     }
 }

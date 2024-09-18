@@ -7,4 +7,6 @@ public class BaseUrlConfiguration
     public string ApiBase { get; set; }
     public string WebBase { get; set; }
     public string OrderBase { get; set; }
+
+    public string ServiceBusConnection { get; set; }
 }
